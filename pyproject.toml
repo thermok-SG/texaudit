@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "texaudit"
+version = "0.2.0"
+description = "Audit LaTeX manuscripts against journal submission requirements."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Suryodoy Ghoshal"}]
+dependencies = ["PyYAML>=6.0", "python-docx>=1.1.2"]
+
+[project.scripts]
+texaudit = "texaudit.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.package-data]
+texaudit = ["profiles/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

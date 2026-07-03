@@ -1,0 +1,43 @@
+journal:
+  publisher: AGU
+  name: "AGU — JGR: Earth Surface"
+  profile_version: "2026-07-03"
+  source: "AGU submission checklist and publication-fee guidance"
+
+sections:
+  abstract:
+    required: true
+    max_words: 249
+  plain_language_summary:
+    required: true
+    max_words: 200
+  key_points:
+    required: true
+    max_items: 3
+    max_characters_per_item: 140
+
+limits:
+  max_figures: null
+  max_tables: null
+
+publication_units:
+  enabled: true
+  words_per_unit: 500
+  # JGR manuscripts above 25 PUs may incur excess page fees; this is not a submission rejection threshold.
+  warning_threshold: 25
+
+presence_checks:
+  open_research_statement:
+    label: "Open Research statement"
+    required: true
+    aliases:
+      - "open research statement"
+      - "open research"
+      - "data availability"
+      - "data and code availability"
+  acknowledgements:
+    label: "Acknowledgements"
+    required: false
+    aliases:
+      - "acknowledgements"
+      - "acknowledgments"

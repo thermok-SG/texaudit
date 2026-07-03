@@ -1,0 +1,67 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+from .counting import count_characters, count_words
+from .models import ManuscriptStats
+from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, normalise_name
+
+ABSTRACT_NAMES = {"abstract"}
+PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
+KEYPOINT_NAMES = {"key points", "keypoints", "key_points"}
+REFERENCE_NAMES = {"references", "bibliography", "reference list"}
+CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?\d+[a-zA-Z]?\s*[:.\-]", re.I)
+
+
+def parse_text(path: Path) -> ManuscriptStats:
+    path = path.expanduser().resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"Text file not found: {path}")
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    stats = ManuscriptStats(source=str(path), files_read=[str(path)])
+    current = "body"
+    key_items: list[str] = []
+
+    for line in raw.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        name = normalise_name(text.rstrip(":"))
+        if name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES):
+            current = name
+            stats.section_names.append(name)
+            continue
+        if CAPTION_RE.match(text):
+            if text.lower().startswith("table"):
+                stats.table_caption_words += count_words(text)
+                stats.table_count += 1
+            else:
+                stats.figure_caption_words += count_words(text)
+                stats.figure_count += 1
+            continue
+        if current in ABSTRACT_NAMES:
+            stats.abstract_words += count_words(text)
+        elif current in PLS_NAMES:
+            stats.plain_language_summary_words += count_words(text)
+        elif current in KEYPOINT_NAMES:
+            if text.startswith(('-', '•', '*')):
+                key_items.append(text.lstrip('-•* ').strip())
+            else:
+                key_items.append(text)
+        elif current in REFERENCE_NAMES:
+            stats.reference_words += count_words(text)
+        elif current in ACK_NAMES:
+            stats.acknowledgements_words += count_words(text)
+        elif current in APPENDIX_NAMES or current.startswith("appendix"):
+            stats.appendix_words += count_words(text)
+        elif current in OPEN_RESEARCH_NAMES:
+            stats.open_research_words += count_words(text)
+        else:
+            stats.body_words += count_words(text)
+
+    stats.key_point_count = len(key_items)
+    stats.key_point_max_characters = max((count_characters(item) for item in key_items), default=0)
+    stats.unresolved_marker_count = raw.count("??")
+    stats.warnings.append("Plain-text mode is an estimate: it cannot reliably distinguish embedded figures, tables, equations, captions, tracked changes, or Word styles.")
+    return stats
