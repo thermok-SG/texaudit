@@ -1,3 +1,10 @@
+"""Evaluate parsed manuscript statistics against declarative journal rules.
+
+This module deliberately does not parse manuscript files. It converts the
+statistics produced by a reader into :class:`~texaudit.models.CheckResult`
+objects, keeping journal policy separate from file-format handling.
+"""
+
 from __future__ import annotations
 
 from typing import Any
@@ -6,6 +13,8 @@ from .models import AuditReport, CheckResult, ManuscriptStats
 
 
 def _limit_check(name: str, actual: int, max_value: int | None, unit: str) -> CheckResult:
+    """Create a hard-limit check, or an informational result without a limit."""
+
     if max_value is None:
         return CheckResult(name, "INFO", f"{actual} {unit}; no limit configured.", actual=actual)
     status = "PASS" if actual <= max_value else "FAIL"
@@ -13,6 +22,8 @@ def _limit_check(name: str, actual: int, max_value: int | None, unit: str) -> Ch
 
 
 def _configured_limit(name: str, actual: int, config: dict[str, Any], key: str, unit: str) -> CheckResult | None:
+    """Create a check from a nested limit configuration when one is present."""
+
     maximum = config.get(key)
     if maximum is None:
         return None
@@ -24,7 +35,10 @@ def _configured_limit(name: str, actual: int, config: dict[str, Any], key: str, 
 
 
 def _required_section(stats: ManuscriptStats, name: str, aliases: list[str], required: bool = True) -> CheckResult:
-    found = any(alias.lower() in stats.section_names or alias.lower() in stats.environment_names for alias in aliases)
+    """Check whether any configured alias was parsed as a section/environment."""
+
+    detected_names = [item.lower() for item in stats.section_names + stats.environment_names]
+    found = any(alias.lower() in detected for alias in aliases for detected in detected_names)
     if found:
         return CheckResult(name, "PASS", "Detected.")
     status = "FAIL" if required else "INFO"
@@ -33,11 +47,33 @@ def _required_section(stats: ManuscriptStats, name: str, aliases: list[str], req
 
 
 def audit(stats: ManuscriptStats, profile: dict[str, Any], profile_path: str | None = None) -> AuditReport:
+    """Apply a loaded journal profile to parsed manuscript statistics.
+
+    Args:
+        stats: Format-independent measurements produced by a manuscript reader.
+        profile: Loaded profile mapping. See ``profiles/ADDING_PROFILES.md`` for
+            the supported schema.
+        profile_path: Optional source identifier recorded in the final report.
+
+    Returns:
+        A report containing individual checks and the original statistics.
+    """
+
     journal = profile.get("journal", {})
     profile_name = journal.get("name", "Custom profile")
     checks: list[CheckResult] = []
     limits = profile.get("limits", {})
     sections = profile.get("sections", {})
+
+    coverage = profile.get("coverage", {})
+    if coverage.get("message"):
+        checks.append(
+            CheckResult(
+                "Profile coverage",
+                coverage.get("status", "INFO"),
+                coverage["message"],
+            )
+        )
 
     abstract_cfg = sections.get("abstract", {})
     if abstract_cfg:
@@ -72,7 +108,11 @@ def audit(stats: ManuscriptStats, profile: dict[str, Any], profile_path: str | N
     highlights_cfg = sections.get("highlights", {})
     if highlights_cfg:
         if stats.highlight_count == 0 and not highlights_cfg.get("required", False):
-            checks.append(CheckResult("Highlights", "INFO", "Not detected; Elsevier highlights are normally uploaded as a separate file."))
+            message = highlights_cfg.get(
+                "absence_message",
+                "Not detected; highlights may be supplied as a separate file.",
+            )
+            checks.append(CheckResult("Highlights", "INFO", message))
         else:
             minimum = highlights_cfg.get("min_items")
             maximum = highlights_cfg.get("max_items")
@@ -84,8 +124,13 @@ def audit(stats: ManuscriptStats, profile: dict[str, Any], profile_path: str | N
                 status = "PASS" if stats.highlight_max_characters <= max_chars else "FAIL"
                 checks.append(CheckResult("Longest highlight", status, f"{stats.highlight_max_characters} / {max_chars} characters", actual=stats.highlight_max_characters, expected=max_chars))
 
-    checks.append(_limit_check("Figures", stats.figure_count, limits.get("max_figures"), "figures"))
-    checks.append(_limit_check("Tables", stats.table_count, limits.get("max_tables"), "tables"))
+    figures_cfg = limits.get("figures", {})
+    figures_result = _configured_limit("Figures", stats.figure_count, figures_cfg, "max_items", "figures") if figures_cfg else None
+    checks.append(figures_result or _limit_check("Figures", stats.figure_count, limits.get("max_figures"), "figures"))
+
+    tables_cfg = limits.get("tables", {})
+    tables_result = _configured_limit("Tables", stats.table_count, tables_cfg, "max_items", "tables") if tables_cfg else None
+    checks.append(tables_result or _limit_check("Tables", stats.table_count, limits.get("max_tables"), "tables"))
 
     title_cfg = limits.get("title", {})
     for result in (

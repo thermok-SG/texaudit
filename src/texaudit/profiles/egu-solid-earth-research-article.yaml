@@ -1,0 +1,11 @@
+extends: _copernicus-egu-research-article
+journal:
+  name: "EGU — Solid Earth (Research Article)"
+  source: "Solid Earth Submission"
+  source_url: "https://www.solid-earth.net/submission.html"
+  journal_url: "https://www.solid-earth.net/"
+
+sections:
+  abstract:
+    required: true
+    max_words: 300

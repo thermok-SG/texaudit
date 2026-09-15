@@ -1,3 +1,5 @@
+"""Command-line interface for configuring, running, and rendering an audit."""
+
 from __future__ import annotations
 
 import argparse
@@ -5,13 +7,14 @@ import json
 import sys
 from pathlib import Path
 
-from .audit import audit
-from .readers import parse_source
-from .profiles import builtin_profile_names, load_profile
+from .api import TexAudit
+from .profiles import builtin_profile_names
 from .render import render_terminal
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create the command-line argument parser."""
+
     parser = argparse.ArgumentParser(description="Audit TeX, DOCX, or plain-text manuscripts against a journal profile.")
     parser.add_argument("source_file", nargs="?", help="Manuscript file (.tex, .docx, .txt, or .md).")
     parser.add_argument("--journal", help="Built-in journal profile name.")
@@ -26,6 +29,13 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Run the command-line program and return a process exit status.
+
+    Exit status ``0`` means there were no failing checks, ``1`` means the audit
+    completed with at least one failure, and ``2`` means the request could not
+    be processed.
+    """
+
     args = build_parser().parse_args(argv)
     if args.list_journals:
         print("\n".join(builtin_profile_names()))
@@ -34,9 +44,13 @@ def main(argv: list[str] | None = None) -> int:
         print("error: SOURCE_FILE is required unless --list-journals is used.", file=sys.stderr)
         return 2
     try:
-        profile, profile_path = load_profile(args.journal, args.profile)
-        stats = parse_source(Path(args.source_file), source_format=args.format, follow_inputs=args.follow_inputs)
-        report = audit(stats, profile, profile_path)
+        auditor = TexAudit(
+            journal=args.journal,
+            profile_path=args.profile,
+            source_format=args.format,
+            follow_inputs=args.follow_inputs,
+        )
+        report = auditor.audit(Path(args.source_file))
     except (OSError, ValueError, yaml_error()) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -49,6 +63,8 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def yaml_error():
+    """Return PyYAML's parse-error type, with a safe import fallback."""
+
     try:
         import yaml
         return yaml.YAMLError

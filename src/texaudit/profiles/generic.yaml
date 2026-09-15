@@ -1,0 +1,13 @@
+journal:
+  publisher: null
+  name: "Generic manuscript breakdown (no journal rules)"
+  profile_version: "2026-09-15"
+  source: "texaudit metric definitions"
+
+coverage:
+  status: WARNING
+  message: "Metrics-only profile: no journal limits or submission requirements are checked. Select a journal-specific profile before submission."
+
+limits:
+  max_figures: null
+  max_tables: null

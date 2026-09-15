@@ -1,3 +1,11 @@
+"""Extract manuscript metrics from modern Word (DOCX) documents.
+
+The reader combines paragraph text, named styles, and selected WordprocessingML
+elements. It is deliberately best-effort because Word permits content in text
+boxes, fields, linked objects, and revision markup that ``python-docx`` does not
+always expose through its high-level API.
+"""
+
 from __future__ import annotations
 
 import re
@@ -7,7 +15,7 @@ from docx import Document
 
 from .counting import count_characters, count_words
 from .models import ManuscriptStats
-from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, normalise_name
+from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, matches_section_name, normalise_name
 
 ABSTRACT_NAMES = {"abstract"}
 PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
@@ -18,11 +26,15 @@ CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?(\d+[a-zA-Z]?)
 
 
 def _paragraph_is_heading(paragraph) -> bool:
+    """Return whether a paragraph uses a recognised heading-like style."""
+
     style_name = (getattr(paragraph.style, "name", "") or "").lower()
     return style_name.startswith("heading") or style_name in {"title", "subtitle"}
 
 
 def _heading_level(paragraph) -> int | None:
+    """Infer a numeric level from standard or AGU template heading styles."""
+
     style_name = (getattr(paragraph.style, "name", "") or "").lower()
     match = re.match(r"heading\s*[- ]?\s*(\d+)", style_name)
     if match:
@@ -35,10 +47,14 @@ def _heading_level(paragraph) -> int | None:
 
 
 def _section_name(value: str) -> str:
+    """Remove a leading hierarchical section number from normalised text."""
+
     return re.sub(r"^\d+(?:\.\d+)*\s+", "", value)
 
 
 def _caption_kind(paragraph) -> str | None:
+    """Classify a caption paragraph as ``figure`` or ``table`` when possible."""
+
     text = paragraph.text.strip()
     style_name = (getattr(paragraph.style, "name", "") or "").lower()
     match = CAPTION_RE.match(text)
@@ -55,6 +71,8 @@ def _caption_kind(paragraph) -> str | None:
 
 
 def _drawing_count(document) -> int:
+    """Count inline and floating Word drawing elements with a safe fallback."""
+
     # Inline shapes miss floating images; counting w:drawing catches both.
     try:
         return len(document.element.body.xpath(".//w:drawing"))
@@ -63,6 +81,8 @@ def _drawing_count(document) -> int:
 
 
 def _equation_count(document) -> int:
+    """Count displayed Office Math blocks, falling back to individual equations."""
+
     try:
         displayed = document.element.body.xpath(".//m:oMathPara")
         if displayed:
@@ -73,6 +93,8 @@ def _equation_count(document) -> int:
 
 
 def _citation_count(document) -> int:
+    """Count citation field codes visible in the DOCX XML instruction text."""
+
     try:
         instructions = document.element.body.xpath(".//w:instrText")
         return sum(1 for item in instructions if "CITATION" in (item.text or "").upper() or " CITE " in f" {(item.text or '').upper()} ")
@@ -81,6 +103,23 @@ def _citation_count(document) -> int:
 
 
 def parse_docx(path: Path) -> ManuscriptStats:
+    """Extract manuscript measurements from a DOCX file.
+
+    The parser recognises conventional Word styles and the AGU template's
+    ``Heading-Main``, ``Heading-Secondary``, ``Abstract``, ``Key Points``, and
+    caption conventions. Counts for complex fields and floating content should
+    be reviewed alongside the warnings in the returned object.
+
+    Args:
+        path: DOCX manuscript to read.
+
+    Returns:
+        Format-independent manuscript measurements.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+    """
+
     path = path.expanduser().resolve()
     if not path.exists():
         raise FileNotFoundError(f"DOCX file not found: {path}")
@@ -117,11 +156,13 @@ def parse_docx(path: Path) -> ManuscriptStats:
                 stats.title_words = count_words(text)
                 stats.title_characters = count_characters(text)
             continue
-        is_named_heading = section_name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES)
+        exact_heading_names = ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES
+        is_open_research_heading = matches_section_name(section_name, OPEN_RESEARCH_NAMES)
+        is_named_heading = section_name in exact_heading_names or is_open_research_heading
         if _paragraph_is_heading(paragraph) or is_named_heading:
             content_started = True
             if is_named_heading:
-                current = section_name
+                current = "open research" if is_open_research_heading else section_name
                 seen_heading_names.append(section_name)
                 continue
             # Styled headings are retained as body structure but do not count as prose.

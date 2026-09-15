@@ -1,0 +1,18 @@
+journal:
+  publisher: Geological Society of America
+  profile_version: "2026-09-15"
+  source: "GSA Preparing Your Manuscript"
+  source_url: "https://www.geosociety.org/publications/author-information/preparing-your-manuscript"
+
+coverage:
+  status: WARNING
+  message: "Automated checks cover selected quantitative manuscript rules only; confirm article type, title-page metadata, accessibility text, artwork, supplementary files, ethics, and submission-system requirements manually."
+
+sections:
+  abstract:
+    required: true
+    max_words: 250
+
+limits:
+  max_figures: null
+  max_tables: null

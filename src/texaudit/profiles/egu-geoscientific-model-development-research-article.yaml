@@ -1,0 +1,19 @@
+extends: _copernicus-egu-research-article
+journal:
+  name: "EGU — Geoscientific Model Development (Research Article)"
+  source: "Geoscientific Model Development Submission"
+  source_url: "https://www.geoscientific-model-development.net/submission.html"
+  journal_url: "https://www.geoscientific-model-development.net/"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: manually confirm GMD's model-name/version title convention where applicable, code archiving and persistent identifiers, numbered section order, separate 500-character short summary, template/files, assets, artwork, and submission fields."
+
+presence_checks:
+  data_availability:
+    label: "Code and Data Availability statement"
+    required: true
+    aliases:
+      - "code and data availability"
+      - "data and code availability"
+      - "code availability"

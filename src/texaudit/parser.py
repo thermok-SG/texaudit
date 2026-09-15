@@ -1,3 +1,10 @@
+"""Extract manuscript components and metrics from expanded TeX source.
+
+The parser recognises conventional LaTeX structures plus both the older and
+2025 AGU template representations of abstracts, plain-language summaries, and
+key points. It uses structural heuristics rather than running a TeX engine.
+"""
+
 from __future__ import annotations
 
 import re
@@ -7,22 +14,45 @@ from .counting import MATH_ENVS, count_characters, count_words
 from .models import ManuscriptStats
 from .tex import BEGIN_END_RE, SECTION_RE, command_argument_blocks, command_arguments, extract_environment_blocks, load_tex, remove_spans
 
-FIGURE_ENVS = {"figure", "figure*"}
+FIGURE_ENVS = {"figure", "figure*", "sidewaysfigure", "sidewaysfigure*"}
 TABLE_ENVS = {"table", "table*", "longtable"}
 REFERENCE_ENVS = {"thebibliography", "references"}
 ACK_NAMES = {"acknowledgements", "acknowledgments"}
 APPENDIX_NAMES = {"appendix", "appendices"}
-OPEN_RESEARCH_NAMES = {"open research statement", "open research", "data availability", "data and code availability"}
+OPEN_RESEARCH_NAMES = {
+    "open research statement",
+    "open research",
+    "data availability",
+    "data and code availability",
+    "data and software availability",
+    "software and data availability",
+    "software availability",
+}
 PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
 HIGHLIGHT_NAMES = {"highlights", "research highlights"}
 TOP_SECTION_RE = re.compile(r"\\section\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}")
 
 
 def normalise_name(value: str) -> str:
+    """Lowercase a structural name and collapse its internal whitespace."""
+
     return re.sub(r"\s+", " ", value.strip().lower())
 
 
+def matches_section_name(value: str, aliases: set[str]) -> bool:
+    """Return whether a heading equals or contains a recognised section alias.
+
+    Containment supports descriptive headings such as ``Software environment
+    and Data availability`` while keeping matching limited to headings.
+    """
+
+    name = normalise_name(value)
+    return any(name == alias or alias in name for alias in aliases)
+
+
 def _first_environment_content(text: str, names: list[str]) -> tuple[str, list[tuple[int, int]]]:
+    """Return content and spans for the first matching environment name."""
+
     for name in names:
         blocks = extract_environment_blocks(text, name)
         if blocks:
@@ -31,6 +61,8 @@ def _first_environment_content(text: str, names: list[str]) -> tuple[str, list[t
 
 
 def _extract_sections(text: str) -> list[tuple[int, int, str, str]]:
+    """Split TeX into section spans with normalised names and raw content."""
+
     matches = list(SECTION_RE.finditer(text))
     sections: list[tuple[int, int, str, str]] = []
     for idx, match in enumerate(matches):
@@ -42,18 +74,47 @@ def _extract_sections(text: str) -> list[tuple[int, int, str, str]]:
 
 
 def _caption_text(block: str) -> str:
+    """Collect visible caption and captionof arguments from an environment."""
+
     captions = command_arguments(block, "caption") + command_arguments(block, "captionof")
     return " ".join(captions)
 
 
 def _count_bib_entries(text: str) -> int:
-    if "\\bibitem" in text:
-        return len(re.findall(r"\\bibitem(?:\[[^\]]*\])?\{", text))
-    return 0
+    """Count explicit ``\\bibitem`` commands in rendered bibliography source."""
+
+    return len(re.findall(r"\\bibitem\b", text))
 
 
 def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptStats:
+    """Extract manuscript measurements from a TeX source tree.
+
+    Args:
+        path: Root TeX manuscript.
+        follow_inputs: Recursively expand ``\\input``, ``\\include``, and
+            ``\\subfile`` references when true.
+
+    Returns:
+        Format-independent manuscript measurements plus parser warnings.
+
+    Raises:
+        FileNotFoundError: If the root source does not exist.
+    """
+
+    path = path.expanduser().resolve()
     text, files, warnings = load_tex(path, follow_inputs=follow_inputs)
+
+    # BibTeX normally generates a same-stem .bbl that is referenced indirectly
+    # by \bibliography rather than \input. Load it when available so explicit
+    # entries can be measured without modifying the manuscript source.
+    has_bibliography_command = re.search(r"\\(?:bibliography|addbibresource)\s*\{", text)
+    has_rendered_bibliography = extract_environment_blocks(text, "thebibliography")
+    bbl_path = path.with_suffix(".bbl")
+    if follow_inputs and has_bibliography_command and not has_rendered_bibliography and bbl_path.is_file():
+        bbl_text, bbl_files, bbl_warnings = load_tex(bbl_path, follow_inputs=False)
+        text += "\n" + bbl_text
+        files.extend(bbl_files)
+        warnings.extend(bbl_warnings)
     stats = ManuscriptStats(source=str(path), files_read=files, warnings=warnings)
     stats.environment_names = sorted({m.group(2) for m in BEGIN_END_RE.finditer(text)})
     stats.section_names = [normalise_name(m.group(1)) for m in SECTION_RE.finditer(text)]
@@ -124,6 +185,8 @@ def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptSta
     section_spans: list[tuple[int, int]] = []
     # Remove nested display and bibliography material before counting named prose sections.
     def prose_only(content: str) -> str:
+        """Remove nested floats, maths, and references before prose counting."""
+
         spans: list[tuple[int, int]] = []
         for env in FIGURE_ENVS | TABLE_ENVS | MATH_ENVS | REFERENCE_ENVS:
             spans.extend((start, end) for start, end, _ in extract_environment_blocks(content, env))
@@ -148,7 +211,7 @@ def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptSta
         elif name in APPENDIX_NAMES or name.startswith("appendix"):
             stats.appendix_words += count_words(content)
             section_spans.append((start, end))
-        elif name in OPEN_RESEARCH_NAMES:
+        elif matches_section_name(name, OPEN_RESEARCH_NAMES):
             stats.open_research_words += count_words(content)
             section_spans.append((start, end))
 

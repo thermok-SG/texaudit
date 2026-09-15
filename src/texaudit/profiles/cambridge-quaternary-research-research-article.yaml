@@ -1,0 +1,28 @@
+journal:
+  publisher: Cambridge University Press
+  name: "Quaternary Research — Research Article"
+  profile_version: "2026-09-15"
+  source: "Quaternary Research Instructions for Contributors"
+  source_url: "https://www.cambridge.org/core/journals/quaternary-research/information/about-this-journal/instructions-contributors"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: confirm article type, the maximum of 10 keywords, title-page metadata, competing-interest wording, data policy, artwork, supplementary files, and submission-system requirements manually."
+
+sections:
+  abstract:
+    required: true
+    max_words: 200
+
+limits:
+  max_figures: null
+  max_tables: null
+
+presence_checks:
+  competing_interests:
+    label: "Competing Interest declaration"
+    required: true
+    aliases:
+      - "competing interests"
+      - "conflict of interest"
+      - "conflicts of interest"

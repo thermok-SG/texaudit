@@ -1,0 +1,32 @@
+journal:
+  publisher: AAAS
+  name: "Science Advances — Research Article"
+  profile_version: "2026-09-15"
+  source: "Science Advances Information for Authors"
+  source_url: "https://www.science.org/content/page/science-advances-information-authors"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: manuscript length is only approximated by parsed body text; manually confirm the one-sentence summary, title and abstract format, references in supplementary material, data/materials policies, declarations, artwork, and submission fields."
+
+sections:
+  abstract:
+    required: true
+    max_words: 150
+
+limits:
+  max_figures: null
+  max_tables: null
+  main_text:
+    max_words: 15000
+    exclude_methods: false
+    exceed_status: WARNING
+    qualifier: "Science Advances describes 15,000 words as an upper guideline; texaudit reports parsed body text only."
+  display_items:
+    max_items: 10
+    exceed_status: WARNING
+    qualifier: "Science Advances describes this as an upper guideline."
+  references:
+    max_items: 80
+    exceed_status: WARNING
+    qualifier: "Science Advances describes this as a suggested upper limit."

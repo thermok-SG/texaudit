@@ -4,7 +4,13 @@ journal:
   source: "Elsevier Highlights guidance"
   source_url: "https://www.elsevier.com/researcher/author/tools-and-resources/highlights"
 
+coverage:
+  status: WARNING
+  message: "Partial automated profile: confirm article type, declarations, file preparation, artwork, keywords, and submission-system requirements in the journal's current Guide for Authors."
+
 sections:
+  abstract:
+    required: true
   # Highlights are normally a separate upload, so absence from the manuscript
   # itself is informational rather than a failure.
   highlights:
@@ -12,8 +18,26 @@ sections:
     min_items: 3
     max_items: 5
     max_characters_per_item: 85
+    absence_message: "Not detected; Elsevier highlights are normally uploaded as a separate file."
 
 limits:
   max_figures: null
   max_tables: null
 
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "data and software availability"
+      - "software and data availability"
+      - "code and data availability"
+  competing_interests:
+    label: "Competing Interest declaration"
+    required: true
+    aliases:
+      - "declaration of competing interest"
+      - "competing interests"
+      - "conflict of interest"
+      - "conflicts of interest"

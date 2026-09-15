@@ -1,5 +1,7 @@
 extends: _elsevier-earth-science
 journal:
-  name: "Elsevier — Journal of Hydrology"
+  name: "Elsevier — Journal of Hydrology (Research Paper)"
+  profile_version: "2026-09-15"
+  source: "Journal of Hydrology Guide for Authors"
+  source_url: "https://www.sciencedirect.com/journal/journal-of-hydrology/publish/guide-for-authors"
   journal_url: "https://shop.elsevier.com/journals/journal-of-hydrology/0022-1694"
-

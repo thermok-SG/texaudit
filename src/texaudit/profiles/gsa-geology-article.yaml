@@ -1,0 +1,14 @@
+extends: _gsa-journal
+journal:
+  name: "GSA — Geology (Article)"
+  journal_url: "https://pubs.geoscienceworld.org/geology"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: manually verify Geology's 18,500-character combined allowance (including title, authors, affiliations, abstract, text, acknowledgements, and captions), plus title-page metadata, accessibility text, artwork, supplementary files, and submission fields."
+
+limits:
+  display_items:
+    max_items: 4
+  references:
+    max_items: 35

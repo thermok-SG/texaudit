@@ -1,9 +1,13 @@
+"""Render structured audit reports for human-readable terminal output."""
+
 from __future__ import annotations
 
 from .models import AuditReport
 
 
 def render_terminal(report: AuditReport) -> str:
+    """Render an audit report as aligned plain text without ANSI styling."""
+
     s = report.stats
     agu_profile = any(check.name == "Publication units" for check in report.checks)
     lines = [

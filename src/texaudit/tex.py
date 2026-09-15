@@ -1,3 +1,10 @@
+"""Low-level helpers for loading and structurally scanning TeX source.
+
+These functions understand balanced groups, environments, comments, and common
+include commands. They intentionally stop short of macro expansion or TeX
+execution so audits remain fast, local, and transparent.
+"""
+
 from __future__ import annotations
 
 import re
@@ -9,7 +16,7 @@ SECTION_RE = re.compile(r"\\(?:section|subsection|subsubsection|paragraph)\*?\s*
 
 
 def strip_comments(text: str) -> str:
-    """Remove TeX comments while preserving escaped percent signs."""
+    """Remove TeX comments while preserving percent signs escaped by backslashes."""
     lines: list[str] = []
     for line in text.splitlines():
         out: list[str] = []
@@ -28,6 +35,8 @@ def strip_comments(text: str) -> str:
 
 
 def _resolve_include(base: Path, target: str) -> Path | None:
+    """Resolve an include target relative to its parent, trying a `.tex` suffix."""
+
     candidate = (base / target).expanduser()
     candidates = [candidate]
     if candidate.suffix == "":
@@ -39,7 +48,19 @@ def _resolve_include(base: Path, target: str) -> Path | None:
 
 
 def load_tex(path: Path, *, follow_inputs: bool = True, _seen: set[Path] | None = None) -> tuple[str, list[str], list[str]]:
-    """Load a TeX source, recursively expanding common include directives."""
+    """Load TeX source and optionally expand common include directives.
+
+    Args:
+        path: Root or included TeX file.
+        follow_inputs: Whether to expand input/include/subfile commands.
+        _seen: Internal recursion guard shared by nested loads.
+
+    Returns:
+        Expanded comment-free text, resolved filenames read, and warnings.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+    """
     path = path.expanduser().resolve()
     seen = _seen if _seen is not None else set()
     if path in seen:
@@ -57,6 +78,8 @@ def load_tex(path: Path, *, follow_inputs: bool = True, _seen: set[Path] | None 
         return text, files, warnings
 
     def replace(match: re.Match[str]) -> str:
+        """Replace one include command with recursively loaded source."""
+
         target = match.group(1).strip()
         included = _resolve_include(path.parent, target)
         if included is None:
@@ -71,7 +94,7 @@ def load_tex(path: Path, *, follow_inputs: bool = True, _seen: set[Path] | None 
 
 
 def find_balanced(text: str, start: int, opener: str = "{", closer: str = "}") -> tuple[str, int] | None:
-    """Return content/end index for a balanced brace group beginning at start."""
+    """Return a balanced group's content and exclusive end index, if complete."""
     if start >= len(text) or text[start] != opener:
         return None
     depth = 0
@@ -94,7 +117,11 @@ def find_balanced(text: str, start: int, opener: str = "{", closer: str = "}") -
 
 
 def extract_environment_blocks(text: str, env_name: str) -> list[tuple[int, int, str]]:
-    """Extract non-nested blocks for a named environment, supporting same-name nesting."""
+    """Extract outer blocks for an environment while supporting same-name nesting.
+
+    Each returned tuple contains the full block's start and exclusive end
+    offsets followed by the inner content.
+    """
     token_re = re.compile(r"\\(begin|end)\s*\{" + re.escape(env_name) + r"\}")
     blocks: list[tuple[int, int, str]] = []
     depth = 0
@@ -115,6 +142,8 @@ def extract_environment_blocks(text: str, env_name: str) -> list[tuple[int, int,
 
 
 def remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
+    """Replace possibly overlapping source spans with spaces without offset drift."""
+
     # Merge overlaps before editing so a nested span (for example, AGU's 2025
     # plainlanguagesummary inside abstract) cannot invalidate outer offsets.
     merged: list[tuple[int, int]] = []
@@ -129,7 +158,7 @@ def remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
 
 
 def command_arguments(text: str, command: str) -> list[str]:
-    """Extract first braced argument for a command, allowing one optional argument."""
+    """Extract each command's first braced argument after an optional argument."""
     pattern = re.compile(r"\\" + re.escape(command) + r"\*?\s*(?:\[[^\]]*\])?\s*")
     results: list[str] = []
     for match in pattern.finditer(text):
@@ -141,7 +170,7 @@ def command_arguments(text: str, command: str) -> list[str]:
 
 
 def command_argument_blocks(text: str, command: str, count: int) -> list[tuple[int, int, list[str]]]:
-    """Extract the span and consecutive braced arguments of each command."""
+    """Extract source spans and consecutive braced arguments for a command."""
     pattern = re.compile(r"\\" + re.escape(command) + r"\*?\s*")
     results: list[tuple[int, int, list[str]]] = []
     for match in pattern.finditer(text):

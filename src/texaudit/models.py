@@ -1,3 +1,5 @@
+"""Format-independent data models used by parsers, checks, and renderers."""
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -7,6 +9,13 @@ from typing import Any
 
 @dataclass
 class ManuscriptStats:
+    """Measurements extracted from a manuscript.
+
+    Readers populate the fields they can detect and leave unsupported or absent
+    components at zero. ``warnings`` records known ambiguities so consumers can
+    distinguish a measured zero from a potentially undetected feature.
+    """
+
     source: str
     files_read: list[str] = field(default_factory=list)
     title_words: int = 0
@@ -39,8 +48,13 @@ class ManuscriptStats:
 
     @property
     def agu_word_count(self) -> int:
-        # AGU: abstract + body + acknowledgements + captions + appendices + one per equation.
-        # Excludes title/front matter, PLS, key points, table cell text, ORS, references, SI.
+        """Return words counted by AGU's publication-unit formula.
+
+        This includes abstract, body, acknowledgements, captions, appendices,
+        and one word per equation. It excludes front matter, plain-language
+        summary, key points, table cells, Open Research, references, and SI.
+        """
+
         return (
             self.abstract_words
             + self.body_words
@@ -52,6 +66,8 @@ class ManuscriptStats:
         )
 
     def to_dict(self) -> dict[str, Any]:
+        """Serialise all measurements, including the computed AGU total."""
+
         data = asdict(self)
         data["agu_word_count"] = self.agu_word_count
         return data
@@ -59,6 +75,8 @@ class ManuscriptStats:
 
 @dataclass
 class CheckResult:
+    """Outcome of applying one journal rule to one manuscript measurement."""
+
     name: str
     status: str  # PASS, WARNING, FAIL, INFO
     message: str
@@ -66,11 +84,15 @@ class CheckResult:
     expected: Any = None
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the result."""
+
         return asdict(self)
 
 
 @dataclass
 class AuditReport:
+    """Complete result of auditing one manuscript against one profile."""
+
     profile_name: str
     profile_path: str | None
     stats: ManuscriptStats
@@ -78,6 +100,8 @@ class AuditReport:
 
     @property
     def overall_status(self) -> str:
+        """Return the most severe status across all checks."""
+
         statuses = {check.status for check in self.checks}
         if "FAIL" in statuses:
             return "FAIL"
@@ -86,6 +110,8 @@ class AuditReport:
         return "PASS"
 
     def to_dict(self) -> dict[str, Any]:
+        """Return a nested, JSON-serialisable report mapping."""
+
         return {
             "profile_name": self.profile_name,
             "profile_path": self.profile_path,

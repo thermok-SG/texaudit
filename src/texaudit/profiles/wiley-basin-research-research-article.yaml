@@ -1,0 +1,54 @@
+journal:
+  publisher: Wiley
+  name: "Basin Research — Research Article"
+  profile_version: "2026-09-15"
+  source: "Basin Research Author Guidelines"
+  source_url: "https://onlinelibrary.wiley.com/page/journal/13652117/homepage/forauthors.html"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: the 8,000-word and 12-figure values are recommendations rather than rejection limits; manually confirm title-page metadata, 3–7 keywords, highlight formatting, artwork, permissions, and submission fields."
+
+sections:
+  abstract:
+    required: true
+    max_words: 300
+  highlights:
+    required: false
+    min_items: 3
+    max_items: 5
+    max_characters_per_item: 100
+    absence_message: "Not detected in the manuscript; Basin Research requires Highlights as a separate uploaded file."
+
+limits:
+  max_figures: null
+  max_tables: null
+  main_text:
+    max_words: 8000
+    exclude_methods: false
+    exceed_status: WARNING
+    qualifier: "Basin Research recommends 8,000 words, excluding references and figure captions."
+  figures:
+    max_items: 12
+    exceed_status: WARNING
+    qualifier: "Basin Research recommends no more than 12 figures."
+
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "data availability statement"
+  conflict_of_interest:
+    label: "Conflict of Interest statement"
+    required: true
+    aliases:
+      - "conflict of interest"
+      - "conflicts of interest"
+  funding:
+    label: "Funding statement"
+    required: true
+    aliases:
+      - "funding"
+      - "funding information"

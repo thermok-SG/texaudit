@@ -1,3 +1,5 @@
+"""Discover and load YAML journal profiles, including built-in inheritance."""
+
 from __future__ import annotations
 
 from importlib import resources
@@ -8,6 +10,8 @@ import yaml
 
 
 def builtin_profile_names() -> list[str]:
+    """Return sorted public profile names bundled with the installed package."""
+
     folder = resources.files("texaudit").joinpath("profiles")
     return sorted(
         path.name.removesuffix(".yaml")
@@ -17,6 +21,8 @@ def builtin_profile_names() -> list[str]:
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge mappings while replacing lists and scalar values."""
+
     merged = dict(base)
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(merged.get(key), dict):
@@ -27,6 +33,8 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 
 def _load_builtin(name: str, seen: set[str] | None = None) -> tuple[dict[str, Any], Any]:
+    """Load one bundled profile and recursively resolve its ``extends`` key."""
+
     seen = set() if seen is None else seen
     if name in seen:
         raise ValueError(f"Circular journal profile inheritance involving '{name}'.")
@@ -44,6 +52,22 @@ def _load_builtin(name: str, seen: set[str] | None = None) -> tuple[dict[str, An
 
 
 def load_profile(journal: str | None = None, profile_path: str | None = None) -> tuple[dict[str, Any], str | None]:
+    """Load a custom profile path or a named bundled profile.
+
+    ``profile_path`` takes precedence when both selectors are supplied. Custom
+    profiles are intentionally loaded verbatim and therefore cannot inherit a
+    bundled profile.
+
+    Returns:
+        A tuple of the profile mapping and its resolved source identifier.
+
+    Raises:
+        FileNotFoundError: If a custom profile path does not exist.
+        ValueError: If no selector is supplied, a built-in name is unknown, or
+            built-in inheritance is circular.
+        yaml.YAMLError: If YAML syntax is invalid.
+    """
+
     if profile_path:
         path = Path(profile_path).expanduser().resolve()
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}

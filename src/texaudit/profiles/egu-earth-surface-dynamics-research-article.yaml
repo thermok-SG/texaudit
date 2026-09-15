@@ -1,0 +1,6 @@
+extends: _copernicus-egu-research-article
+journal:
+  name: "EGU — Earth Surface Dynamics (Research Article)"
+  source: "Earth Surface Dynamics Submission"
+  source_url: "https://www.earth-surface-dynamics.net/submission.html"
+  journal_url: "https://www.earth-surface-dynamics.net/"

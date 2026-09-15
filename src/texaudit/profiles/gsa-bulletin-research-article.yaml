@@ -1,0 +1,4 @@
+extends: _gsa-journal
+journal:
+  name: "GSA Bulletin — Research Article"
+  journal_url: "https://pubs.geoscienceworld.org/gsabulletin"

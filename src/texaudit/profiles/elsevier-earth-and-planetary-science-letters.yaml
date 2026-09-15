@@ -1,5 +1,36 @@
 extends: _elsevier-earth-science
 journal:
-  name: "Elsevier — Earth and Planetary Science Letters"
+  name: "Elsevier — Earth and Planetary Science Letters (Letter)"
+  profile_version: "2026-09-15"
+  source: "Earth and Planetary Science Letters Guide for Authors"
+  source_url: "https://www.sciencedirect.com/journal/earth-and-planetary-science-letters/publish/guide-for-authors"
   journal_url: "https://shop.elsevier.com/journals/earth-and-planetary-science-letters/0012-821X"
 
+sections:
+  abstract:
+    required: true
+
+limits:
+  main_text:
+    # EPSL Letters are restricted to 6,500 words from Introduction through
+    # Conclusions. Abstract, captions, acknowledgements, and references are
+    # tracked separately by texaudit.
+    max_words: 6500
+    exclude_methods: false
+
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "data and software availability"
+      - "software and data availability"
+  competing_interests:
+    label: "Competing Interest declaration"
+    required: true
+    aliases:
+      - "declaration of competing interest"
+      - "competing interests"
+      - "conflict of interest"
+      - "conflicts of interest"

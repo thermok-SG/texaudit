@@ -1,3 +1,10 @@
+"""Convert lightly structured TeX fragments into reproducible text metrics.
+
+The routines are intentionally heuristic: they preserve visible arguments of
+common formatting commands while discarding citations, references, and maths.
+They do not attempt to execute TeX or expand arbitrary user macros.
+"""
+
 from __future__ import annotations
 
 import re
@@ -9,7 +16,11 @@ VERBATIM_ENVS = {"verbatim", "verbatim*", "lstlisting", "minted", "comment", "fi
 
 
 def replace_known_commands(text: str) -> str:
-    """Preserve human-visible command arguments for common manuscript macros."""
+    """Replace TeX commands while preserving likely human-visible arguments.
+
+    Unknown commands conservatively retain their braced arguments because many
+    manuscript-specific macros simply wrap visible prose.
+    """
     commands_with_last_text_arg = {
         "textit", "textbf", "emph", "textrm", "textsf", "texttt", "underline", "added",
         "deleted", "replaced", "revise", "change", "mbox", "ensuremath", "url", "href",
@@ -50,7 +61,7 @@ def replace_known_commands(text: str) -> str:
             args.append(value)
             while cursor < len(text) and text[cursor].isspace():
                 cursor += 1
-        if command in {"cite", "citep", "citet", "parencite", "textcite", "autocite", "footcite", "nocite", "ref", "eqref", "autoref", "cref", "Cref", "label", "includegraphics", "bibliography", "addbibresource"}:
+        if command in {"begin", "end", "cite", "citep", "citet", "parencite", "textcite", "autocite", "footcite", "nocite", "ref", "eqref", "autoref", "cref", "Cref", "label", "includegraphics", "bibliography", "addbibresource"}:
             output.append(" ")
         elif command in commands_with_last_text_arg and args:
             # href{url}{label}; SI{number}{unit}; replaced{old}{new}; retain final visible-like argument.
@@ -69,6 +80,8 @@ def replace_known_commands(text: str) -> str:
 
 
 def clean_visible_text(text: str) -> str:
+    """Strip non-prose TeX syntax and normalise whitespace for measurement."""
+
     text = re.sub(r"(?s)\\begin\{(?:verbatim\*?|lstlisting|minted|comment|filecontents\*?)\}.*?\\end\{(?:verbatim\*?|lstlisting|minted|comment|filecontents\*?)\}", " ", text)
     # Inline and display math are not prose. Display equations are counted separately by caller.
     text = re.sub(r"(?s)\\\[.*?\\\]", " ", text)
@@ -82,6 +95,8 @@ def clean_visible_text(text: str) -> str:
 
 
 def count_words(text: str) -> int:
+    """Count Unicode word-like tokens in visible manuscript text."""
+
     cleaned = clean_visible_text(text)
     # Numbers and alphabetic words count; isolated punctuation does not.
     tokens = re.findall(r"[\wÀ-ÖØ-öø-ÿ]+(?:[’'\-][\wÀ-ÖØ-öø-ÿ]+)*", cleaned, flags=re.UNICODE)
@@ -89,4 +104,6 @@ def count_words(text: str) -> int:
 
 
 def count_characters(text: str) -> int:
+    """Count visible characters after collapsing whitespace to single spaces."""
+
     return len(re.sub(r"\s+", " ", clean_visible_text(text)).strip())

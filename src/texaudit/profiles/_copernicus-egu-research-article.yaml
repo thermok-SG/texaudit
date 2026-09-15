@@ -1,0 +1,32 @@
+journal:
+  publisher: Copernicus Publications / EGU
+  profile_version: "2026-09-15"
+  source: "Copernicus Publications Manuscript Preparation and Data Policy"
+  source_url: "https://publications.copernicus.org/for_authors/manuscript_preparation.html"
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: confirm journal-specific article type, numbered section order, the separate 500-character short summary, file/template rules, assets and persistent identifiers, artwork, and submission-system requirements manually."
+
+sections:
+  abstract:
+    required: true
+
+limits:
+  max_figures: null
+  max_tables: null
+
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "code and data availability"
+      - "data and code availability"
+  author_contribution:
+    label: "Author Contribution statement"
+    required: true
+    aliases:
+      - "author contribution"
+      - "author contributions"

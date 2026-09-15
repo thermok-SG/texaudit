@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "texaudit"
 version = "0.2.0"
-description = "Audit LaTeX manuscripts against journal submission requirements."
+description = "Audit LaTeX, Word, and text manuscripts against journal requirements."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{name = "Suryodoy Ghoshal"}]

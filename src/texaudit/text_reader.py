@@ -1,3 +1,10 @@
+"""Best-effort reader for plain-text and Markdown manuscripts.
+
+Section boundaries are inferred from standalone heading-like lines. Unlike the
+TeX and DOCX readers, this reader has no reliable structural metadata and always
+adds a warning explaining that its measurements are estimates.
+"""
+
 from __future__ import annotations
 
 import re
@@ -5,7 +12,7 @@ from pathlib import Path
 
 from .counting import count_characters, count_words
 from .models import ManuscriptStats
-from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, normalise_name
+from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, matches_section_name, normalise_name
 
 ABSTRACT_NAMES = {"abstract"}
 PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
@@ -16,6 +23,18 @@ CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?\d+[a-zA-Z]?\s
 
 
 def parse_text(path: Path) -> ManuscriptStats:
+    """Extract manuscript measurements from a UTF-8 text or Markdown file.
+
+    Args:
+        path: Source file to read. Invalid UTF-8 bytes are replaced.
+
+    Returns:
+        Best-effort, format-independent manuscript statistics.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+    """
+
     path = path.expanduser().resolve()
     if not path.exists():
         raise FileNotFoundError(f"Text file not found: {path}")
@@ -30,8 +49,10 @@ def parse_text(path: Path) -> ManuscriptStats:
         if not text:
             continue
         name = normalise_name(text.rstrip(":"))
-        if name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES):
-            current = name
+        exact_heading_names = ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES
+        is_open_research_heading = matches_section_name(name, OPEN_RESEARCH_NAMES)
+        if name in exact_heading_names or is_open_research_heading:
+            current = "open research" if is_open_research_heading else name
             stats.section_names.append(name)
             continue
         if CAPTION_RE.match(text):

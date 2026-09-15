@@ -14,6 +14,14 @@ A personal profile is loaded directly and is not installed or copied. Keep it wi
 
 Personal profiles must be self-contained. The `extends` mechanism described below resolves bundled profile names only when loading a built-in profile; it is not currently resolved for a file passed with `--profile`.
 
+If no compliance rules are needed, the bundled `generic` profile already provides a manuscript breakdown:
+
+```bash
+texaudit manuscript.tex --journal generic
+```
+
+It deliberately carries a metrics-only coverage warning and should not be used as the parent of a journal profile.
+
 ## Complete example
 
 Only add checks supported by the journal's published instructions. Omit unknown limits rather than guessing.
@@ -47,6 +55,10 @@ sections:
 limits:
   max_figures: 8
   max_tables: 5
+  figures:
+    max_items: 8
+    exceed_status: WARNING
+    qualifier: "The journal describes this as a recommendation."
   title:
     max_words: 20
     max_characters: 120
@@ -70,6 +82,10 @@ publication_units:
   words_per_unit: 500
   warning_threshold: 25
   max_units: null
+
+coverage:
+  status: WARNING
+  message: "Partial automated profile: confirm requirements not checked here."
 
 presence_checks:
   data_availability:
@@ -110,7 +126,8 @@ Use YAML booleans `true` and `false`, not quoted strings. A configured required 
 
 The `limits` mapping supports:
 
-- `max_figures` and `max_tables`
+- `max_figures` and `max_tables` for hard limits (or `null` when none is configured)
+- `figures.max_items` and `tables.max_items` when a count needs `exceed_status` or a `qualifier`; these take precedence over the corresponding simple field
 - `title.max_words` and `title.max_characters`
 - `main_text.max_words`; set `exclude_methods: true` when the journal excludes Methods from this allowance
 - `methods.max_words`
@@ -138,6 +155,14 @@ Each entry under `presence_checks` can have:
 
 Aliases are matched to detected section/environment names. They are not arbitrary searches of every sentence, so prefer actual heading variants used by the journal template.
 
+### Profile coverage notice
+
+Use an optional top-level `coverage` mapping when the available automated rules cover only part of a journal's submission requirements. `coverage.status` should normally be `WARNING`, and `coverage.message` should identify the important requirements that still need manual review. This prevents a small collection of passing automated checks from presenting itself as a comprehensive pass.
+
+Every bundled public profile must resolve to a `coverage` notice with `status: WARNING`. A shared publisher profile may supply it through inheritance. This keeps an otherwise clean numerical audit from being mistaken for complete submission readiness. Personal profiles may omit it, but omission does not imply that every editorial or submission-system requirement is machine-checkable.
+
+When a published limit combines content the parser does not fully measure (for example, author names, affiliations, and body text in one character allowance), do not apply that limit to a partial measurement. Name the composite rule in the coverage warning until the data model and all relevant readers can calculate it faithfully.
+
 ## Add a built-in profile
 
 Built-in profiles live in this directory and use lower-case, hyphenated filenames, for example `example-journal-research-article.yaml`. The filename without `.yaml` becomes the value accepted by `--journal`.
@@ -161,8 +186,9 @@ Then:
 2. Confirm it appears in `texaudit --list-journals` (underscore-prefixed shared profiles should not appear).
 3. Audit a small representative manuscript with `--journal your-profile-name`.
 4. Add tests for profile discovery, inherited values, and every unusual limit or status.
-5. Run `pytest -q`.
-6. Build a wheel and check that the YAML file is packaged; `pyproject.toml` includes `profiles/*.yaml` as package data.
+5. Add or retain a `WARNING` coverage notice that names material manual checks.
+6. Run `pytest -q`.
+7. Build a wheel and check that the YAML file is packaged; `pyproject.toml` includes `profiles/*.yaml` as package data.
 
 ## Research and review checklist
 

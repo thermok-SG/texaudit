@@ -1,0 +1,6 @@
+extends: _copernicus-egu-research-article
+journal:
+  name: "EGU — Natural Hazards and Earth System Sciences (Research Article)"
+  source: "NHESS Submission"
+  source_url: "https://www.natural-hazards-and-earth-system-sciences.net/submission.html"
+  journal_url: "https://www.natural-hazards-and-earth-system-sciences.net/"

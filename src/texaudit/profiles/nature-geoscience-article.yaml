@@ -5,6 +5,10 @@ journal:
   source: "Nature Geoscience Content Types"
   source_url: "https://www.nature.com/ngeo/content"
 
+coverage:
+  status: WARNING
+  message: "Automated checks cover selected Article limits and detectable headings; confirm editorial policies, reporting summaries, declarations, artwork, supplementary files, and submission-system requirements manually."
+
 sections:
   abstract:
     required: true
@@ -32,4 +36,3 @@ presence_checks:
     aliases:
       - "data availability"
       - "data availability statement"
-

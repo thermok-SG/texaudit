@@ -5,6 +5,15 @@ from texaudit.parser import parse_manuscript
 from texaudit.profiles import load_profile
 
 
+def test_public_class_runs_an_audit():
+    from texaudit import TexAudit
+
+    fixture = Path(__file__).parent / "fixtures" / "sample.tex"
+    report = TexAudit(journal="agu-jgr-earth-surface").audit(fixture)
+    assert report.profile_name == "AGU — JGR: Earth Surface"
+    assert report.stats.abstract_words > 0
+
+
 def test_parse_sample():
     fixture = Path(__file__).parent / "fixtures" / "sample.tex"
     stats = parse_manuscript(fixture)
@@ -29,6 +38,38 @@ def test_parse_official_agu_2025_structure():
     assert stats.agu_word_count == 14
 
 
+def test_sideways_figures_combined_availability_heading_and_matching_bbl(tmp_path):
+    manuscript = tmp_path / "article.tex"
+    manuscript.write_text(
+        r"""
+        \begin{document}
+        \begin{figure}\caption{First}\end{figure}
+        \begin{sidewaysfigure}\caption{Second}\end{sidewaysfigure}
+        \section*{Software environment and Data availability}
+        Data and software are archived in repositories.
+        \bibliography{references}
+        \end{document}
+        """,
+        encoding="utf-8",
+    )
+    manuscript.with_suffix(".bbl").write_text(
+        r"""
+        \begin{thebibliography}{}
+        \bibitem [Optional author label]{first} First reference.
+        \bibitem{second} Second reference.
+        \end{thebibliography}
+        """,
+        encoding="utf-8",
+    )
+
+    stats = parse_manuscript(manuscript)
+
+    assert stats.figure_count == 2
+    assert stats.open_research_words == 7
+    assert stats.reference_count == 2
+    assert str(manuscript.with_suffix(".bbl")) in stats.files_read
+
+
 def test_agu_profile_audits_sample():
     fixture = Path(__file__).parent / "fixtures" / "sample.tex"
     profile, path = load_profile("agu-jgr-earth-surface")
@@ -48,6 +89,51 @@ def test_common_agu_profiles_are_available():
     assert "agu-tectonics" in names
     assert "agu-water-resources-research" in names
     assert "_agu-research-article" not in names
+
+
+def test_requested_earth_science_profiles_are_available():
+    from texaudit.profiles import builtin_profile_names
+
+    names = set(builtin_profile_names())
+    assert {
+        "aaas-science-advances-research-article",
+        "cambridge-quaternary-research-research-article",
+        "egu-earth-surface-dynamics-research-article",
+        "egu-geoscientific-model-development-research-article",
+        "egu-nhess-research-article",
+        "egu-solid-earth-research-article",
+        "elsevier-journal-of-structural-geology-research-article",
+        "gsa-bulletin-research-article",
+        "gsa-geology-article",
+        "wiley-basin-research-research-article",
+    } <= names
+
+
+def test_generic_profile_reports_metrics_without_journal_checks():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("generic")
+    stats = ManuscriptStats(source="notes.txt", body_words=1234, figure_count=2, table_count=1)
+    report = audit(stats, profile, path)
+    checks = {check.name: check for check in report.checks}
+
+    assert report.profile_name == "Generic manuscript breakdown (no journal rules)"
+    assert report.overall_status == "WARNING"
+    assert checks["Profile coverage"].status == "WARNING"
+    assert "Abstract" not in checks
+    assert checks["Figures"].status == "INFO"
+    assert checks["Tables"].status == "INFO"
+
+
+def test_every_builtin_profile_warns_about_partial_coverage():
+    from texaudit.profiles import builtin_profile_names
+
+    for name in builtin_profile_names():
+        profile, path = load_profile(name)
+        report = audit(parse_manuscript(Path(__file__).parent / "fixtures" / "sample.tex"), profile, path)
+        coverage = [check for check in report.checks if check.name == "Profile coverage"]
+        assert len(coverage) == 1, name
+        assert coverage[0].status == "WARNING", name
 
 
 def test_grl_profile_overrides_shared_agu_rules():
@@ -195,3 +281,103 @@ def test_elsevier_highlight_limits():
     checks = {check.name: check for check in report.checks}
     assert checks["Highlights"].status == "PASS"
     assert checks["Longest highlight"].status == "FAIL"
+
+
+def test_epsl_letter_checks_length_declarations_and_partial_coverage():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("elsevier-earth-and-planetary-science-letters")
+    stats = ManuscriptStats(
+        source="letter.tex",
+        abstract_words=200,
+        body_words=7344,
+        section_names=[
+            "software environment and data availability",
+            "conflict of interest",
+        ],
+    )
+
+    report = audit(stats, profile, path)
+    checks = {check.name: check for check in report.checks}
+
+    assert checks["Profile coverage"].status == "WARNING"
+    assert checks["Main text"].actual == 7344
+    assert checks["Main text"].status == "FAIL"
+    assert checks["Data Availability statement"].status == "PASS"
+    assert checks["Competing Interest declaration"].status == "PASS"
+
+
+def test_geology_hard_limits_and_unmeasured_composite_limit_notice():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("gsa-geology-article")
+    stats = ManuscriptStats(
+        source="article.docx",
+        abstract_words=251,
+        figure_count=4,
+        table_count=1,
+        reference_count=36,
+    )
+    report = audit(stats, profile, path)
+    checks = {check.name: check for check in report.checks}
+
+    assert checks["Abstract"].status == "FAIL"
+    assert checks["Display items"].status == "FAIL"
+    assert checks["References"].status == "FAIL"
+    assert "18,500-character" in checks["Profile coverage"].message
+
+
+def test_advisory_limits_warn_instead_of_fail():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("aaas-science-advances-research-article")
+    stats = ManuscriptStats(
+        source="article.tex",
+        abstract_words=150,
+        body_words=15001,
+        figure_count=8,
+        table_count=3,
+        reference_count=81,
+    )
+    checks = {check.name: check for check in audit(stats, profile, path).checks}
+
+    assert checks["Main text"].status == "WARNING"
+    assert checks["Display items"].status == "WARNING"
+    assert checks["References"].status == "WARNING"
+
+
+def test_basin_research_current_recommendations_warn():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("wiley-basin-research-research-article")
+    stats = ManuscriptStats(
+        source="article.docx",
+        abstract_words=300,
+        body_words=8001,
+        figure_count=13,
+        highlight_count=5,
+        highlight_max_characters=101,
+        section_names=["Data availability", "Conflict of interest", "Funding"],
+    )
+    checks = {check.name: check for check in audit(stats, profile, path).checks}
+
+    assert checks["Main text"].status == "WARNING"
+    assert checks["Figures"].status == "WARNING"
+    assert checks["Highlights"].status == "PASS"
+    assert checks["Longest highlight"].status == "FAIL"
+
+
+def test_egu_profiles_inherit_required_end_matter():
+    from texaudit.models import ManuscriptStats
+
+    profile, path = load_profile("egu-solid-earth-research-article")
+    stats = ManuscriptStats(
+        source="article.tex",
+        abstract_words=301,
+        section_names=["Data availability", "Author contributions"],
+    )
+    checks = {check.name: check for check in audit(stats, profile, path).checks}
+
+    assert checks["Abstract"].status == "FAIL"
+    assert checks["Data Availability statement"].status == "PASS"
+    assert checks["Author Contribution statement"].status == "PASS"
