@@ -1,0 +1,13 @@
+extends: _agu-research-article
+journal:
+  name: "AGU — Geophysical Research Letters (Research Letter)"
+sections:
+  abstract:
+    max_words: 149
+  plain_language_summary:
+    required: true
+publication_units:
+  # GRL Research Letters above 12 PUs are returned for shortening.
+  max_units: 12
+  warning_threshold: null
+

@@ -1,0 +1,43 @@
+journal:
+  publisher: Nature Portfolio
+  name: "Nature Communications — Article"
+  profile_version: "2026-09-15"
+  source: "Nature Communications Article guidance"
+  source_url: "https://www.nature.com/ncomms/submit/article"
+
+sections:
+  abstract:
+    required: true
+    max_words: 200
+
+limits:
+  max_figures: null
+  max_tables: null
+  title:
+    max_words: 15
+  main_text:
+    max_words: 5000
+    exclude_methods: true
+    exceed_status: WARNING
+    qualifier: "Nature Communications describes this as an ideal limit."
+  methods:
+    max_words: 3000
+    exceed_status: WARNING
+    qualifier: "Nature Communications describes this as typical."
+  display_items:
+    max_items: 10
+    exceed_status: WARNING
+    qualifier: "The permitted number depends on manuscript length."
+  references:
+    max_items: 70
+    exceed_status: WARNING
+    qualifier: "Nature Communications describes this as a guide."
+
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "data availability statement"
+

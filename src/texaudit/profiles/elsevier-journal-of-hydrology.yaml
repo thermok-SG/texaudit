@@ -1,0 +1,5 @@
+extends: _elsevier-earth-science
+journal:
+  name: "Elsevier — Journal of Hydrology"
+  journal_url: "https://shop.elsevier.com/journals/journal-of-hydrology/0022-1694"
+

@@ -1,0 +1,5 @@
+extends: _elsevier-earth-science
+journal:
+  name: "Elsevier — Geomorphology"
+  journal_url: "https://shop.elsevier.com/journals/geomorphology/0169-555X"
+

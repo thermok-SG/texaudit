@@ -115,7 +115,15 @@ def extract_environment_blocks(text: str, env_name: str) -> list[tuple[int, int,
 
 
 def remove_spans(text: str, spans: list[tuple[int, int]]) -> str:
-    for start, end in sorted(spans, reverse=True):
+    # Merge overlaps before editing so a nested span (for example, AGU's 2025
+    # plainlanguagesummary inside abstract) cannot invalidate outer offsets.
+    merged: list[tuple[int, int]] = []
+    for start, end in sorted(spans):
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    for start, end in reversed(merged):
         text = text[:start] + " " + text[end:]
     return text
 
@@ -129,4 +137,24 @@ def command_arguments(text: str, command: str) -> list[str]:
         if group:
             value, _ = group
             results.append(value)
+    return results
+
+
+def command_argument_blocks(text: str, command: str, count: int) -> list[tuple[int, int, list[str]]]:
+    """Extract the span and consecutive braced arguments of each command."""
+    pattern = re.compile(r"\\" + re.escape(command) + r"\*?\s*")
+    results: list[tuple[int, int, list[str]]] = []
+    for match in pattern.finditer(text):
+        cursor = match.end()
+        arguments: list[str] = []
+        for _ in range(count):
+            while cursor < len(text) and text[cursor].isspace():
+                cursor += 1
+            group = find_balanced(text, cursor)
+            if not group:
+                break
+            value, cursor = group
+            arguments.append(value)
+        if arguments:
+            results.append((match.start(), cursor, arguments))
     return results

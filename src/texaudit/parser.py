@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .counting import MATH_ENVS, count_characters, count_words
 from .models import ManuscriptStats
-from .tex import BEGIN_END_RE, SECTION_RE, command_arguments, extract_environment_blocks, load_tex, remove_spans
+from .tex import BEGIN_END_RE, SECTION_RE, command_argument_blocks, command_arguments, extract_environment_blocks, load_tex, remove_spans
 
 FIGURE_ENVS = {"figure", "figure*"}
 TABLE_ENVS = {"table", "table*", "longtable"}
@@ -13,6 +13,9 @@ REFERENCE_ENVS = {"thebibliography", "references"}
 ACK_NAMES = {"acknowledgements", "acknowledgments"}
 APPENDIX_NAMES = {"appendix", "appendices"}
 OPEN_RESEARCH_NAMES = {"open research statement", "open research", "data availability", "data and code availability"}
+PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
+HIGHLIGHT_NAMES = {"highlights", "research highlights"}
+TOP_SECTION_RE = re.compile(r"\\section\*?\s*(?:\[[^\]]*\])?\s*\{([^}]*)\}")
 
 
 def normalise_name(value: str) -> str:
@@ -59,18 +62,35 @@ def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptSta
 
     title = command_arguments(text, "title")
     stats.title_words = count_words(title[0]) if title else 0
-
-    abstract, abstract_spans = _first_environment_content(text, ["abstract"])
-    stats.abstract_words = count_words(abstract)
+    stats.title_characters = count_characters(title[0]) if title else 0
 
     pls, pls_spans = _first_environment_content(text, ["plainlanguagesummary", "plain_language_summary", "pls"])
     stats.plain_language_summary_words = count_words(pls)
 
+    abstract, abstract_spans = _first_environment_content(text, ["abstract"])
+    # The official agujournal2025 template nests the PLS inside the abstract.
+    # It is visually distinct and excluded from AGU's publication-unit count.
+    nested_pls_spans: list[tuple[int, int]] = []
+    for name in ["plainlanguagesummary", "plain_language_summary", "pls"]:
+        nested_pls_spans.extend((start, end) for start, end, _ in extract_environment_blocks(abstract, name))
+    stats.abstract_words = count_words(remove_spans(abstract, nested_pls_spans))
+
     keypoints, keypoints_spans = _first_environment_content(text, ["keypoints", "key_points"])
     items = re.split(r"\\item(?:\s|\{|$)", keypoints)
     key_items = [item for item in items[1:] if count_words(item) > 0]
+    # agujournal2025 replaced the environment with a three-argument command;
+    # empty braces are placeholders and do not constitute key points.
+    keypoint_command_spans: list[tuple[int, int]] = []
+    for start, end, arguments in command_argument_blocks(text, "keypoints", 3):
+        key_items.extend(item for item in arguments if count_words(item) > 0)
+        keypoint_command_spans.append((start, end))
     stats.key_point_count = len(key_items)
     stats.key_point_max_characters = max((count_characters(item) for item in key_items), default=0)
+
+    highlights, highlight_spans = _first_environment_content(text, ["highlights", "researchhighlights"])
+    highlight_items = [item for item in re.split(r"\\item(?:\s|\{|$)", highlights)[1:] if count_words(item) > 0]
+    stats.highlight_count = len(highlight_items)
+    stats.highlight_max_characters = max((count_characters(item) for item in highlight_items), default=0)
 
     figure_spans: list[tuple[int, int]] = []
     table_spans: list[tuple[int, int]] = []
@@ -109,9 +129,20 @@ def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptSta
             spans.extend((start, end) for start, end, _ in extract_environment_blocks(content, env))
         return remove_spans(content, spans)
 
+    top_sections = list(TOP_SECTION_RE.finditer(text))
+    for index, match in enumerate(top_sections):
+        name = re.sub(r"^\d+(?:\.\d+)*\s+", "", normalise_name(match.group(1)))
+        if name in {"methods", "online methods", "materials and methods"}:
+            end = top_sections[index + 1].start() if index + 1 < len(top_sections) else len(text)
+            stats.methods_words += count_words(prose_only(text[match.start():end]))
+
     for start, end, name, content in sections:
         content = prose_only(content)
-        if name in ACK_NAMES:
+        if name in PLS_NAMES and stats.plain_language_summary_words == 0:
+            # Support the agujournal2019-style unnumbered PLS section too.
+            stats.plain_language_summary_words += count_words(content)
+            section_spans.append((start, end))
+        elif name in ACK_NAMES:
             stats.acknowledgements_words += count_words(content)
             section_spans.append((start, end))
         elif name in APPENDIX_NAMES or name.startswith("appendix"):
@@ -126,11 +157,12 @@ def parse_manuscript(path: Path, *, follow_inputs: bool = True) -> ManuscriptSta
         blocks = extract_environment_blocks(text, env)
         reference_spans.extend((start, end) for start, end, _ in blocks)
         stats.reference_words += sum(count_words(block) for _, _, block in blocks)
+        stats.reference_count += sum(_count_bib_entries(block) for _, _, block in blocks)
     # A BibTeX declaration means entries live outside source; we only surface this as a warning.
     if re.search(r"\\(?:bibliography|addbibresource)\s*\{", text) and not reference_spans:
         stats.warnings.append("Bibliography declaration found, but reference entries are external and were not counted. Supply a .bbl input if you need entry-level reference auditing.")
 
-    protected_spans = abstract_spans + pls_spans + keypoints_spans + figure_spans + table_spans + equation_spans + section_spans + reference_spans
+    protected_spans = abstract_spans + pls_spans + keypoints_spans + keypoint_command_spans + highlight_spans + figure_spans + table_spans + equation_spans + section_spans + reference_spans
     remaining = remove_spans(text, protected_spans)
     # Remove preamble/title/front-matter before document begins.
     begin_doc = re.search(r"\\begin\s*\{document\}", remaining)

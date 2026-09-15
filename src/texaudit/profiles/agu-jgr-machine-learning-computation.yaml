@@ -1,0 +1,9 @@
+extends: _agu-research-article
+journal:
+  name: "AGU — JGR: Machine Learning and Computation"
+sections:
+  plain_language_summary:
+    required: true
+publication_units:
+  # Fully open access: AGU charges no excess page fee. Keep reporting PUs.
+  warning_threshold: null

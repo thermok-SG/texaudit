@@ -1,0 +1,6 @@
+extends: _agu-research-article
+journal:
+  name: "AGU — Water Resources Research"
+publication_units:
+  # Fully open access: AGU charges no excess page fee. Keep reporting PUs.
+  warning_threshold: null

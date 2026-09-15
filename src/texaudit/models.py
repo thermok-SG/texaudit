@@ -10,11 +10,15 @@ class ManuscriptStats:
     source: str
     files_read: list[str] = field(default_factory=list)
     title_words: int = 0
+    title_characters: int = 0
     abstract_words: int = 0
     plain_language_summary_words: int = 0
     key_point_count: int = 0
     key_point_max_characters: int = 0
+    highlight_count: int = 0
+    highlight_max_characters: int = 0
     body_words: int = 0
+    methods_words: int = 0
     acknowledgements_words: int = 0
     appendix_words: int = 0
     figure_caption_words: int = 0
@@ -22,6 +26,7 @@ class ManuscriptStats:
     table_text_words: int = 0
     open_research_words: int = 0
     reference_words: int = 0
+    reference_count: int = 0
     equation_count: int = 0
     figure_count: int = 0
     table_count: int = 0

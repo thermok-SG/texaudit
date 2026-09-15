@@ -12,6 +12,7 @@ from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, normalise_na
 ABSTRACT_NAMES = {"abstract"}
 PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
 KEYPOINT_NAMES = {"key points", "keypoints", "key_points"}
+HIGHLIGHT_NAMES = {"highlights", "research highlights"}
 REFERENCE_NAMES = {"references", "bibliography", "reference list"}
 CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?(\d+[a-zA-Z]?)?\s*[:.\-]", re.I)
 
@@ -19,6 +20,22 @@ CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?(\d+[a-zA-Z]?)
 def _paragraph_is_heading(paragraph) -> bool:
     style_name = (getattr(paragraph.style, "name", "") or "").lower()
     return style_name.startswith("heading") or style_name in {"title", "subtitle"}
+
+
+def _heading_level(paragraph) -> int | None:
+    style_name = (getattr(paragraph.style, "name", "") or "").lower()
+    match = re.match(r"heading\s*[- ]?\s*(\d+)", style_name)
+    if match:
+        return int(match.group(1))
+    if style_name in {"heading-main", "heading main"}:
+        return 1
+    if style_name in {"heading-secondary", "heading secondary"}:
+        return 2
+    return None
+
+
+def _section_name(value: str) -> str:
+    return re.sub(r"^\d+(?:\.\d+)*\s+", "", value)
 
 
 def _caption_kind(paragraph) -> str | None:
@@ -76,30 +93,62 @@ def parse_docx(path: Path) -> ManuscriptStats:
 
     current = "body"
     key_items: list[str] = []
+    highlights: list[str] = []
     seen_heading_names: list[str] = []
+    content_started = False
+    seen_captions: set[tuple[str, str]] = set()
+    figure_caption_numbers: set[str] = set()
+    table_caption_numbers: set[str] = set()
 
     for paragraph in document.paragraphs:
         text = paragraph.text.strip()
         if not text:
             continue
         name = normalise_name(text.rstrip(":"))
-        is_named_heading = name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES)
+        section_name = _section_name(name)
+        style_name = (getattr(paragraph.style, "name", "") or "").lower()
+        if style_name == "title":
+            if section_name in HIGHLIGHT_NAMES:
+                current = section_name
+                content_started = True
+                seen_heading_names.append(section_name)
+                continue
+            if stats.title_words == 0:
+                stats.title_words = count_words(text)
+                stats.title_characters = count_characters(text)
+            continue
+        is_named_heading = section_name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES)
         if _paragraph_is_heading(paragraph) or is_named_heading:
+            content_started = True
             if is_named_heading:
-                current = name
-                seen_heading_names.append(name)
+                current = section_name
+                seen_heading_names.append(section_name)
                 continue
             # Styled headings are retained as body structure but do not count as prose.
             seen_heading_names.append(name)
-            current = "appendix" if name.startswith("appendix") else "body"
+            level = _heading_level(paragraph)
+            if level == 1 or current != "methods":
+                current = "methods" if section_name in {"methods", "online methods", "materials and methods"} else ("appendix" if section_name.startswith("appendix") else "body")
+            continue
+
+        if not content_started and style_name in {"affiliation", "author", "authors", "note", "subtitle"}:
             continue
 
         caption_kind = _caption_kind(paragraph)
-        if caption_kind == "figure":
-            stats.figure_caption_words += count_words(text)
-            continue
-        if caption_kind == "table":
-            stats.table_caption_words += count_words(text)
+        if caption_kind:
+            match = CAPTION_RE.match(text)
+            number = match.group(2).lower() if match and match.group(2) else ""
+            identity = (caption_kind, number or normalise_name(text))
+            if identity not in seen_captions:
+                seen_captions.add(identity)
+                if caption_kind == "figure":
+                    stats.figure_caption_words += count_words(text)
+                    if number:
+                        figure_caption_numbers.add(number)
+                else:
+                    stats.table_caption_words += count_words(text)
+                    if number:
+                        table_caption_numbers.add(number)
             continue
 
         if current in ABSTRACT_NAMES:
@@ -108,8 +157,11 @@ def parse_docx(path: Path) -> ManuscriptStats:
             stats.plain_language_summary_words += count_words(text)
         elif current in KEYPOINT_NAMES:
             key_items.append(text)
+        elif current in HIGHLIGHT_NAMES:
+            highlights.append(text.lstrip("-•* ").strip())
         elif current in REFERENCE_NAMES:
             stats.reference_words += count_words(text)
+            stats.reference_count += 1
         elif current in ACK_NAMES:
             stats.acknowledgements_words += count_words(text)
         elif current in APPENDIX_NAMES or current.startswith("appendix"):
@@ -118,10 +170,16 @@ def parse_docx(path: Path) -> ManuscriptStats:
             stats.open_research_words += count_words(text)
         else:
             stats.body_words += count_words(text)
+            if current == "methods":
+                stats.methods_words += count_words(text)
 
     stats.section_names = seen_heading_names
     stats.key_point_count = len(key_items)
     stats.key_point_max_characters = max((count_characters(item) for item in key_items), default=0)
+    stats.highlight_count = len(highlights)
+    stats.highlight_max_characters = max((count_characters(item) for item in highlights), default=0)
+    stats.figure_count = max(stats.figure_count, len(figure_caption_numbers))
+    stats.table_count = max(stats.table_count, len(table_caption_numbers))
 
     for table in document.tables:
         for row in table.rows:

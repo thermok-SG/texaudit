@@ -1,8 +1,7 @@
 extends: _agu-research-article
-
 journal:
-  name: "AGU — JGR: Earth Surface"
-
+  name: "AGU — JGR: Atmospheres"
 sections:
   plain_language_summary:
     required: true
+

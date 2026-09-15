@@ -1,0 +1,19 @@
+journal:
+  publisher: Elsevier
+  profile_version: "2026-09-15"
+  source: "Elsevier Highlights guidance"
+  source_url: "https://www.elsevier.com/researcher/author/tools-and-resources/highlights"
+
+sections:
+  # Highlights are normally a separate upload, so absence from the manuscript
+  # itself is informational rather than a failure.
+  highlights:
+    required: false
+    min_items: 3
+    max_items: 5
+    max_characters_per_item: 85
+
+limits:
+  max_figures: null
+  max_tables: null
+

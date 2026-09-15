@@ -10,6 +10,7 @@ from .parser import ACK_NAMES, APPENDIX_NAMES, OPEN_RESEARCH_NAMES, normalise_na
 ABSTRACT_NAMES = {"abstract"}
 PLS_NAMES = {"plain language summary", "plain-language summary", "plainlanguagesummary", "pls"}
 KEYPOINT_NAMES = {"key points", "keypoints", "key_points"}
+HIGHLIGHT_NAMES = {"highlights", "research highlights"}
 REFERENCE_NAMES = {"references", "bibliography", "reference list"}
 CAPTION_RE = re.compile(r"^\s*(figure|fig\.?|table)\s*(?:s\.?\s*)?\d+[a-zA-Z]?\s*[:.\-]", re.I)
 
@@ -22,13 +23,14 @@ def parse_text(path: Path) -> ManuscriptStats:
     stats = ManuscriptStats(source=str(path), files_read=[str(path)])
     current = "body"
     key_items: list[str] = []
+    highlights: list[str] = []
 
     for line in raw.splitlines():
         text = line.strip()
         if not text:
             continue
         name = normalise_name(text.rstrip(":"))
-        if name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES):
+        if name in (ABSTRACT_NAMES | PLS_NAMES | KEYPOINT_NAMES | HIGHLIGHT_NAMES | REFERENCE_NAMES | ACK_NAMES | APPENDIX_NAMES | OPEN_RESEARCH_NAMES):
             current = name
             stats.section_names.append(name)
             continue
@@ -49,8 +51,11 @@ def parse_text(path: Path) -> ManuscriptStats:
                 key_items.append(text.lstrip('-•* ').strip())
             else:
                 key_items.append(text)
+        elif current in HIGHLIGHT_NAMES:
+            highlights.append(text.lstrip('-•* ').strip())
         elif current in REFERENCE_NAMES:
             stats.reference_words += count_words(text)
+            stats.reference_count += 1
         elif current in ACK_NAMES:
             stats.acknowledgements_words += count_words(text)
         elif current in APPENDIX_NAMES or current.startswith("appendix"):
@@ -62,6 +67,8 @@ def parse_text(path: Path) -> ManuscriptStats:
 
     stats.key_point_count = len(key_items)
     stats.key_point_max_characters = max((count_characters(item) for item in key_items), default=0)
+    stats.highlight_count = len(highlights)
+    stats.highlight_max_characters = max((count_characters(item) for item in highlights), default=0)
     stats.unresolved_marker_count = raw.count("??")
     stats.warnings.append("Plain-text mode is an estimate: it cannot reliably distinguish embedded figures, tables, equations, captions, tracked changes, or Word styles.")
     return stats

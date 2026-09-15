@@ -1,0 +1,9 @@
+extends: _elsevier-earth-science
+journal:
+  name: "Elsevier — Tectonophysics (Regular Paper)"
+  journal_url: "https://shop.elsevier.com/journals/tectonophysics/0040-1951"
+sections:
+  abstract:
+    required: true
+    max_words: 300
+

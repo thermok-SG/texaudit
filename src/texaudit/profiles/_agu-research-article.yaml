@@ -1,0 +1,47 @@
+journal:
+  publisher: AGU
+  profile_version: "2026-09-15"
+  source: "AGU Text & Graphics Requirements and submission checklist"
+  source_url: "https://www.agu.org/publications/authors/journals/text-graphics-requirements"
+
+sections:
+  abstract:
+    required: true
+    # AGU says "less than 250 words."
+    max_words: 249
+  plain_language_summary:
+    required: false
+    max_words: 200
+  key_points:
+    required: true
+    min_items: 1
+    max_items: 3
+    max_characters_per_item: 140
+
+limits:
+  max_figures: null
+  max_tables: null
+
+publication_units:
+  enabled: true
+  words_per_unit: 500
+  # For most AGU journals, Research Articles above 25 PUs may incur excess
+  # length fees. This is a warning threshold, not a rejection threshold.
+  warning_threshold: 25
+
+presence_checks:
+  open_research_statement:
+    label: "Open Research statement"
+    required: true
+    aliases:
+      - "open research statement"
+      - "open research"
+      - "data availability"
+      - "data and code availability"
+  acknowledgements:
+    label: "Acknowledgements"
+    required: false
+    aliases:
+      - "acknowledgements"
+      - "acknowledgments"
+

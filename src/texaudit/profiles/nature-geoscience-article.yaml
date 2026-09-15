@@ -1,0 +1,35 @@
+journal:
+  publisher: Nature Portfolio
+  name: "Nature Geoscience — Article"
+  profile_version: "2026-09-15"
+  source: "Nature Geoscience Content Types"
+  source_url: "https://www.nature.com/ngeo/content"
+
+sections:
+  abstract:
+    required: true
+    max_words: 200
+
+limits:
+  max_figures: null
+  max_tables: null
+  title:
+    max_characters: 90
+  main_text:
+    max_words: 3000
+    exclude_methods: true
+  display_items:
+    max_items: 6
+  references:
+    max_items: 50
+    exceed_status: WARNING
+    qualifier: "Nature Geoscience describes this as a guideline."
+
+presence_checks:
+  data_availability:
+    label: "Data Availability statement"
+    required: true
+    aliases:
+      - "data availability"
+      - "data availability statement"
+
