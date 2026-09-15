@@ -11,17 +11,11 @@
 - Python 3.10 or newer
 - The manuscript as `.tex`, `.docx`, `.txt`, or `.md`
 
-You do **not** need Git, Anaconda, mamba, or programming experience. `texaudit` is not yet on PyPI and does not currently have a standalone installer, so the steps below install it from the source folder.
+You do **not** need Git, Anaconda, mamba, or programming experience. The recommended installation downloads `texaudit` and its small dependencies from PyPI.
 
-## Install without Git
+## Install from PyPI
 
-### 1. Download texaudit
-
-1. Open the [texaudit GitHub page](https://github.com/thermok-SG/texaudit).
-2. Select **Code**, then **Download ZIP**.
-3. Extract the downloaded ZIP file to a folder you can find again.
-
-### 2. Install Python
+### 1. Install Python
 
 Download Python from [python.org](https://www.python.org/downloads/) if Python 3.10 or newer is not already installed.
 
@@ -29,29 +23,29 @@ Download Python from [python.org](https://www.python.org/downloads/) if Python 3
 - On macOS, use the current universal installer from python.org.
 - On Linux, Python is often already installed; otherwise use the software manager supplied with the distribution.
 
-### 3. Open a terminal in the extracted folder
+### 2. Open a terminal
 
-On Windows, open the extracted `texaudit` folder in File Explorer, click the address bar, type `powershell`, and press Enter.
+On Windows, open PowerShell from the Start menu.
 
-On macOS, open Terminal, type `cd ` with a trailing space, drag the extracted folder onto the Terminal window, and press Return. The same `cd` approach works in most Linux terminals.
+On macOS, open Terminal from Applications → Utilities. On Linux, open your distribution's terminal application.
 
-### 4. Install
+### 3. Install
 
 On Windows, run:
 
 ```powershell
-py -m pip install .
+py -m pip install --upgrade texaudit
 ```
 
 On macOS or Linux, run:
 
 ```bash
-python3 -m pip install .
+python3 -m pip install --upgrade texaudit
 ```
 
 The installation also installs the small libraries needed to read YAML profiles and Word files.
 
-### 5. Check the installation
+### 4. Check the installation
 
 Windows:
 
@@ -212,16 +206,16 @@ Profiles are deliberately stored as readable YAML files rather than hard-coded i
 texaudit manuscript.tex --profile "/path/to/my-journal.yaml"
 ```
 
-For a complete field reference, example profile, testing checklist, and instructions for contributing a built-in profile, see [Adding journal profiles](src/texaudit/profiles/ADDING_PROFILES.md).
+For a complete field reference, example profile, testing checklist, and instructions for contributing a built-in profile, see [Adding journal profiles](https://github.com/thermok-SG/texaudit/blob/main/src/texaudit/profiles/ADDING_PROFILES.md).
 
 Custom files passed with `--profile` must contain all rules they need. The `extends` key currently works only between bundled profiles.
 
 ## Update or uninstall
 
-If you installed from a downloaded ZIP, download and extract the new version, open a terminal in that new folder, and run the install command again with `--upgrade`:
+To update to the newest PyPI release:
 
 ```bash
-python3 -m pip install --upgrade .
+python3 -m pip install --upgrade texaudit
 ```
 
 Use `py` instead of `python3` on Windows. To uninstall:
@@ -254,10 +248,10 @@ Install Python 3.10 or newer, close and reopen the terminal, and try again. On W
 
 ### Permission or `externally-managed-environment` error
 
-Python installations supplied by some operating systems prevent global package installation. A simple isolated alternative is [pipx](https://pipx.pypa.io/stable/installation/). Once pipx is installed, open a terminal in the extracted folder and run:
+Python installations supplied by some operating systems prevent global package installation. A simple isolated alternative is [pipx](https://pipx.pypa.io/stable/installation/). Once pipx is installed, run:
 
 ```bash
-pipx install .
+pipx install texaudit
 ```
 
 ### The manuscript section was not detected
@@ -270,13 +264,15 @@ Contributors may use any Python environment manager. With the existing micromamb
 
 ```bash
 micromamba activate texaudit
-python -m pip install -e . pytest
+python -m pip install -e ".[dev]"
 pytest -q
 ```
 
 Without micromamba, create and activate a standard Python virtual environment and run the same `pip` and `pytest` commands.
 
-The [architecture guide](docs/ARCHITECTURE.md) explains the processing pipeline, module boundaries, public API, and recommended extension points. Journal-rule changes are documented separately in [Adding journal profiles](src/texaudit/profiles/ADDING_PROFILES.md).
+The [architecture guide](https://github.com/thermok-SG/texaudit/blob/main/docs/ARCHITECTURE.md) explains the processing pipeline, module boundaries, public API, and recommended extension points. Journal-rule changes are documented separately in [Adding journal profiles](https://github.com/thermok-SG/texaudit/blob/main/src/texaudit/profiles/ADDING_PROFILES.md).
+
+Maintainers should follow the [release guide](https://github.com/thermok-SG/texaudit/blob/main/docs/RELEASING.md) when publishing a new version to PyPI. Releases use GitHub Trusted Publishing and do not require a stored API token.
 
 ### Python API
 
@@ -299,4 +295,4 @@ Use `TexAudit(profile_path="my-journal.yaml")` for a custom profile. The lower-l
 
 ## License
 
-See [LICENSE](LICENSE).
+See the [GPL-3.0 license](https://github.com/thermok-SG/texaudit/blob/main/LICENSE).

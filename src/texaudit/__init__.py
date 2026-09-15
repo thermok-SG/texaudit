@@ -8,4 +8,4 @@ from .api import TexAudit
 from .models import AuditReport, CheckResult, ManuscriptStats
 
 __all__ = ["AuditReport", "CheckResult", "ManuscriptStats", "TexAudit"]
-__version__ = "0.2.0"
+__version__ = "0.2.1"
